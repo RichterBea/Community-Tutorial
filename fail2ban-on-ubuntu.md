@@ -2,7 +2,7 @@
 SPDX-License-Identifier: MIT
 path: "/tutorials/tutorial-template"
 slug: "tutorial-template"
-date: "2021-01-01"
+date: "2021-18-10"
 title: "How to install Fail2ban on Ubuntu 20.04"
 short_description: "This is a tutorial explains how to install and configure Fail2ban on Ubuntu 20.04"
 tags: ["Linux", "Install", "Ubuntu"]
@@ -28,16 +28,6 @@ For this it uses the configured firewall, for this tutorial we will use iptables
 Example terminology that you can use in the tutorial:
 * a root user
 * a configured firewall
-* 
-* Username: `holu` (short for Hetzner OnLine User)
-* Hostname: `<your_host>`
-* Domain: `<example.com>`
-* Subdomain: `<sub.example.com>`
-* IP addresses (IPv4 and IPv6):
-   * Server: `<10.0.0.1>` and `<2001:db8:1234::1>`
-   * Gateway `<192.0.2.254>` and `<2001:db8:1234::ffff>`
-   * Client private: `<198.51.100.1>` and `<2001:db8:9abc::1>`
-   * Client public: `<203.0.113.1>` and `<2001:db8:5678::1>`
 
 ## Step 1 - Installing Fail2ban
 
@@ -48,11 +38,16 @@ sudo apt update
 sudo apt install fail2ban
 ```
 
-Now you have Fail2ban installed and the Fail2ban service will start automatically. YOu can check this with
+Now you have Fail2ban installed and the Fail2ban service will start automatically. You can check this with
 
 ```bash
 systemctl status fail2ban
 ```
+
+You can see also within the `/var/log/fail2ban.log` that Fail2ban starts immediately to ban IP addresses from Port 22.
+It creates a jail for sshd, for which it observes the `/var/log/auth.log`. 
+
+We want to add filter and other jails for other logfiles.
 
 ## Step 2 - Configure Fail2ban
 
@@ -68,26 +63,30 @@ Because the `.conf` files will be overwritten when the package is updated.
 In these file you can add every IP address you want to white list. For example:
 
 ```bash
-ignoreip = 8.8.8.8 ; google
-           127.0.0.1 ; localhost
+ignoreip = <10.0.0.1> ; example_server_1
+           <10.0.0.1> ; example_server_2
 ```
 
 Also the Fail2ban jails will be defined here. 
 
 For every service you want to observe you need to define one jail. A jail includes name of service, specially defined filters and actions.
 
-We want to observe the auth.log for ssh login attempts. The jail is implemented as follows:  
+We want to observe the auth.log for ssh login attempts. You can find a Section "JAILS" within the `jail.local` file with example jails.
+
+Our new jail is implemented as follows:  
 
 ```bash
-[sshd]    # name of jail
+[sshd]
 enabled = true
-logpath = /var/log/auth.log   # you can add more than one logfile to observe
-filter = sshd-filter    # the filter works with regex
-bantime = 1800    # in seconds
+logpath = /var/log/auth.log
+filter = sshd-filter
+bantime = 1800
 findtime = 10m
 maxretry = 5
 action = jail-action
 ```
+
+Logpath can contain more than 2 logfile. Filter will use the files under `filter.d/`. 
 
 Without suffix the ban time default is by seconds. You can use suffix like 1d or 10m (which is the fail2ban default). 
 
@@ -96,9 +95,9 @@ The files where the actions are defined under `actions.d/`
 ### Step 2.2 - jail-action.conf
 
 The jail action contains the instructions what to do with IP addresses which are matched by the filters.
-These actions can be used for all jails.
+These actions can be used for all jails. 
 
-We want to implement the action as follows:
+Create a new file named `jail-action.conf` and implement the action as follows:
 
 ```bash
 [Definition]
@@ -109,28 +108,55 @@ actionunban = iptables -D INPUT -s <ip> -j DROP
 
 ### Step 2.3 - sshd.conf
 
-The filter are defined under `filter.d/`
+The filters are defined under `filter.d/`
 For this tutorial we will define a simple filter. Within the `auth.log` we can find many entries like as following:
 
 ```bash
-Failed password for root from x.x.x. port 58380 ssh2
-Failed password for root from x.x.x.x port 64608 ssh2
-Failed password for root from x.x.x.x port 62142 ssh2
+Failed password for root from <10.0.0.1> port xx ssh2
+Connection closed by invalid user guest <10.0.0.1> port xx
+Invalid user .* from <10.0.0.1>
 ```
 
 So our filter for ssh could look like this: 
 
 ```bash
 [Definition]
-failregex = Failed password for root from <ip> 
+failregex=Failed password for .* from <HOST>
+          Invalid user .* from <HOST>
+          Connection closed by invalid user .* <HOST>
+          
+```
+
+With can test your filter with: `fail2ban-regex`. For example:
+
+`fail2ban-regex /var/log/auth.log /etc/fail2ban/filter.d/sshd.conf`
+
+
+If all works now properly you are able to check the blocked ip addresses with:
+```bash
+fail2ban-server status sshd
+
+Status for the jail: sshd
+|- Filter
+|  |- Currently failed: 1
+|  |- Total failed:     1
+|  `- File list:        /var/log/auth.log
+`- Actions
+   |- Currently banned: 1
+   |- Total banned:     2
+   `- Banned IP list:   <10.0.0.1>
 ```
 
 
+Now our first jail works and bans foreign login attempts.  
 
+You can implement now jails for which you have log files on your server.
 
 ## Conclusion
 
-A short conclusion summarizing what the user has done, and maybe suggesting different courses of action they can now take.
+Fail2ban works in default with the `auth.log` and `sshd` service. We can expand it to work with other logfiles and other services to make out server more secure.   
+
+
 
 ##### License: MIT
 
@@ -159,6 +185,6 @@ By making a contribution to this project, I certify that:
     indefinitely and may be redistributed consistent with this project
     or the license(s) involved.
 
-Signed-off-by: [submitter's name and email address here]
+Signed-off-by: [Beatrice Richter beatrice.richter@hetzner.com]
 
 -->
