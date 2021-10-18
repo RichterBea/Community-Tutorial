@@ -19,7 +19,7 @@ cta: "dedicated"
 ## Introduction
 
 Fail2ban is used to detect unnormal login activity by monitoring log files or ports. 
-In these tutorial we will configure Fail2ban to work with the system log files.
+In this tutorial we will configure Fail2ban to work with the system log files.
 
 You can scan log files and count all entries that matching the regular expression patterns.  When their number reaches a predefined threshold, Fail2ban bans the IP for a specific timespan.
 For this it uses the configured firewall, for this tutorial we will use iptables.
