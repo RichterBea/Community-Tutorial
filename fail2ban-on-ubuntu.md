@@ -25,9 +25,6 @@ You can scan log files and count all entries that matching the regular expressio
 For this it uses the configured firewall, for this tutorial we will use iptables.
 
 
-Example terminology that you can use in the tutorial:
-* a root user
-* a configured firewall
 
 ## Step 1 - Installing Fail2ban
 
